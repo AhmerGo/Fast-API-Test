@@ -1,0 +1,23 @@
+
+INSTALL flask (ensure python 3.5 is the version or newer)
+    - sudo pip3 install virtualenv
+    - virtualenv --version
+    13.1.2
+
+    - virtualenv hello_flask
+    - cd hello_flask
+
+    - source bin/activate (activates virtual environment / deactivate --> gets out)
+
+    - pip3 install Flask
+
+    - create file app.py within the hello_flask folder
+
+    - install gpt4all within flask --> pip3 install gpt4all
+
+    - html doc needs to be in templates folder in flask vm so we can render it
+
+    
+
+link used: https://gist.github.com/dineshviswanath/af72af0ae2031cd9949f 
+

@@ -1,0 +1,39 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+venv
+/node_modules
+/.pnp
+.pnp.js
+../flask_backend/.venv
+**/__pycache__
+**/__pycache__/
+
+
+__pycache__
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+chatbot.log
+calculate_word_count.py
+demo.py
+/LLM/Models
+/LLM/Dataset
+
+# PyCharm files
+.idea

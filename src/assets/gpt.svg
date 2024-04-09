@@ -1,0 +1,15 @@
+<svg width="500px" height="150px" xmlns="http://www.w3.org/2000/svg">
+  <!-- Stylish "Powered by GPT4ALL" Text -->
+  <text x="10" y="60" font-family="Arial" font-size="30" fill="#4F46E5" font-weight="bold">
+    Powered by 
+    <tspan font-family="Arial" font-weight="bold" font-size="30" fill="#10B981">GPT4ALL </tspan>
+  </text>
+
+  <!-- Symbolic Chat Bubble for ChatGPT-like Image -->
+  <g transform="translate(340, 40)"> <!-- Adjusted the translate value from 320 to 350 to move it to the right -->
+    <path d="M10 0 h80 q10 0 10 10 v40 q0 10 -10 10 h-20 l-10 10 -10 -10 h-40 q-10 0 -10 -10 v-40 q0 -10 10 -10 z" fill="#4F46E5"/>
+    <circle cx="30" cy="30" r="5" fill="white"/>
+    <circle cx="50" cy="30" r="5" fill="white"/>
+    <circle cx="70" cy="30" r="5" fill="white"/>
+   </g>
+</svg>

@@ -1,0 +1,12 @@
+your_flask_project/
+│   ├── templates/
+|   |---|----Hardin-Helper
+|   |   |  |----src
+|   |   |  |   |
+│   │   |   |  ├── index.html
+│   │   |   |  └── App.js
+│   └── app.py
+└── ...
+
+
+currently not loading app.js content properly, flask looks for an html file in templates upon running app.py so must revert this to app.js from html doc
