@@ -3,7 +3,7 @@ import torch
 from langchain_community.embeddings import LlamaCppEmbeddings
 from langchain_community.llms import GPT4All
 from langchain.vectorstores.faiss import FAISS
-from langchain.chains import ConversationChain
+from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate
 from database_helper import Connection
@@ -13,6 +13,7 @@ class HSU:
     index_path = "../LLM/HSU_index"
     embeddings = None
     llm = None
+    index = None
 
     @staticmethod
     def initialize():
@@ -22,6 +23,12 @@ class HSU:
         logging.info(f"!!!!!!CUDA VERSION : {torch.version.cuda}")
         device = "nvidia" if torch.cuda.is_available() else "cpu"
         HSU.llm = GPT4All(model=HSU.model_path, device=device)
+        HSU.index = FAISS.load_local(
+            HSU.index_path,
+            HSU.embeddings,
+            allow_dangerous_deserialization=True
+        )
+
 
     @staticmethod
     def rag(question, user_id):
@@ -36,38 +43,30 @@ class HSU:
             chat_history = db_connection.get_chat_history(user_id)
 
             # Create a ConversationBufferMemory instance with the retrieved chat history
-            memory = ConversationBufferMemory(memory_key="history", input_key="input")
+            memory = ConversationBufferMemory(memory_key="chat_history", input_key="question")
             for user_input, bot_response in chat_history:
-                memory.save_context({"input": user_input}, {"output": bot_response})
+                memory.save_context({"question": user_input}, {"answer": bot_response})
 
-            index = FAISS.load_local(
-                HSU.index_path,
-                HSU.embeddings,
-                allow_dangerous_deserialization=True
+
+            condense_question_prompt = PromptTemplate(
+                input_variables=["chat_history", "question"],
+                template="Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question, in its original language.\n\nChat History:\n{chat_history}\nFollow Up Input: {question}\nStandalone question:"
             )
 
-            prompt_template = """You are a chatbot having a conversation with a human.
-
-            {history}
-            Human: {input}
-            Chatbot:"""
-
-            prompt = PromptTemplate(
-                input_variables=["history", "input"], 
-                template=prompt_template
-            )
-
-            conversation_chain = ConversationChain(
+            conversation_chain = ConversationalRetrievalChain.from_llm(
                 llm=HSU.llm,
-                prompt=prompt,
+                retriever=HSU.index.as_retriever(),
+                chain_type="stuff",
+
+                condense_question_prompt=condense_question_prompt,
                 verbose=True,
                 memory=memory
             )
 
-            result = conversation_chain.predict(input=question)
+            result = conversation_chain({"question": question})["answer"]
 
             # Update the chat history in the database
-            memory.save_context({"input": question}, {"output": result})
+            memory.save_context({"question": question}, {"answer": result})
             updated_chat_history = [(msg.content, memory.chat_memory.messages[i+1].content)
                                     for i, msg in enumerate(memory.chat_memory.messages) if i % 2 == 0]
             db_connection.update_chat_history(user_id, updated_chat_history)
