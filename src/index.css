@@ -2,7 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+.message.user {
+  justify-self: right;
+}
 
-.message.user{
-    justify-self: right;
+:root {
+  --custom-purple: #63228f; /* Adjust this color to match your reference */
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.typing-indicator div {
+  width: 8px;
+  height: 8px;
+  margin: 0 4px;
+  background-color: var(
+    --bg-purple
+  ); /* Customize to match the button or theme */
+  border-radius: 50%;
+  animation: blink 1.4s infinite both;
+}
+
+.typing-indicator div:nth-child(1) {
+  animation-delay: -0.32s;
+}
+.typing-indicator div:nth-child(2) {
+  animation-delay: -0.16s;
 }

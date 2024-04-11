@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from database_helper import Connection
 from bson import json_util
 from asyncio import Lock
+import requests
 sys.path.insert(1, '../LLM/')
 from HSU import HSU
 
@@ -25,17 +26,14 @@ app.add_middleware(
 )
 
 class ChatRequest(BaseModel):
-    user_input: str
+    question: str
     user_id: str
-    chat_history: list = []
 
 class SaveChatRequest(BaseModel):
     user_id: str
     user_inputs: list
     bot_inputs: list
 
-model_path = "../LLM/Models/wizardlm-13b-v1.2.Q4_0.gguf"
-index_path = "../LLM/HSU_index"
 
 lock = Lock()
 
@@ -50,33 +48,46 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"error": str(exc)},
     )
 
-async def process_chat_request(user_input, user_id):
+async def process_chat_request(question, user_id):
     try:
-        result = HSU.rag(user_input, user_id)
-        if result and 'answer' in result:
-            logging.info(f"Generated response: {result['answer']}")
-            return {"reply": result['answer']}
+        # Prepare the input data for the model server
+        input_data = {
+            "question": question,
+            "user_id": user_id
+        }
+
+        # Send a POST request to the TorchServe model server endpoint
+        response = requests.post("http://localhost:8080/predictions/wizardlm", json=input_data)
+
+        # Check if the request was successful
+        if response.status_code == 200:
+            result = response.json()
+            if result and 'answer' in result:
+                logging.info(f"Generated response: {result['answer']}")
+                return {"reply": result['answer']}
+            else:
+                logging.error("Failed to generate a response.")
+                return None
         else:
-            logging.error("Failed to generate a response.")
+            logging.error(f"Request to TorchServe model server failed with status code: {response.status_code}")
             return None
     except Exception as e:
         logging.error(f"An error occurred during chat processing: {e}", exc_info=True)
         return None
-    
+
 @app.post("/chat")
 async def chat(request: ChatRequest):
-    user_input = request.user_input
+    question = request.question
     user_id = request.user_id
-    chat_history = request.chat_history
 
-    if not user_input:
+    if not question:
         logging.warning("User input is missing")
         raise HTTPException(
             status_code=400,
-            detail="No user_input provided"
+            detail="No question provided"
         )
 
-    result = await process_chat_request(user_input, user_id)
+    result = await process_chat_request(question, user_id)
     if result:
         return result
     else:
@@ -113,6 +124,7 @@ async def save_chat(request: SaveChatRequest):
         return JSONResponse(content={"message": "Chat history updated successfully"}, status_code=200)
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=5000, workers=2)
+    uvicorn.run("app:app", host="0.0.0.0", port=5000, workers=4)

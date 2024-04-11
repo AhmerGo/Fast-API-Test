@@ -16,6 +16,8 @@ class Connection(object):
         self.hostname = None
         self.password = None
         self.username = None
+        self.chat_logs_collection = None
+
 
     """
     Connects to the MongoDB database using the provided credentials
@@ -132,16 +134,17 @@ class Connection(object):
     """
     def get_chat_history(self, user_id):
         try:
-            db = self.client["chatbot"]
-            collection = db["chat_logs"]
-            chat_log = collection.find_one({"user_id": user_id})
+            chat_log = self.chat_logs_collection.find_one({"user_id": user_id})
             if chat_log:
-                return chat_log["chat_history"]
+                chat_history = chat_log["chat_history"]
+                formatted_chat_history = [
+                    (entry["user_input"], entry["bot_response"]) for entry in chat_history
+                ]
+                return formatted_chat_history
             else:
                 return []
         except Exception as e:
             raise Exception(f"Error retrieving chat history: {str(e)}")
-        
     """
     Appends chat history to the associated user_id
     @param self the instance of HSU.py 
@@ -150,11 +153,12 @@ class Connection(object):
     """        
     def update_chat_history(self, user_id, chat_history):
         try:
-            db = self.client["chatbot"]
-            collection = db["chat_logs"]
-            collection.update_one(
+            formatted_chat_history = [
+                {"user_input": entry[0], "bot_response": entry[1]} for entry in chat_history
+            ]
+            self.chat_logs_collection.update_one(
                 {"user_id": user_id},
-                {"$set": {"chat_history": chat_history}},
+                {"$set": {"chat_history": formatted_chat_history}},
                 upsert=True
             )
         except Exception as e:
@@ -165,12 +169,10 @@ class Connection(object):
     @param self the instance of this connection 
     """
     def create_chat_logs_collection(self):
-        db = self.client["chatbot"]
-        collection_name = "chat_logs"
-        
-        if collection_name not in db.list_collection_names():
-            db.create_collection(collection_name)
-            db[collection_name].create_index("user_id")
+        db = self.client[self.database_name]
+        if "chat_logs" in db.list_collection_names():
+            db.drop_collection("chat_logs")
+        self.chat_logs_collection = db.create_collection("chat_logs")
 
 
     """

@@ -1,56 +1,55 @@
-import React, { useState } from "react";
-import logo from "../assets/logoo.svg"; // Path to the logo image
+import React, { useState, useEffect } from "react";
+import logo from "../assets/logoo.svg"; // Make sure this is the correct path
+import logoMain from "../assets/logo_main.svg";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faTrashAlt, faSave } from "@fortawesome/free-solid-svg-icons";
+
 function ChatBot() {
   const [message, setMessage] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
-  // Adding session id's for each user to maintain individual chat histories
-  const [sessionID] = useState(() => Math.random().toString(36).substring(7));
+  const [userId] = useState(() => Math.random().toString(36).substring(7));
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatHistory]);
 
   const sendMessage = async () => {
-    if (message.trim() === "") {
-      // Optionally handle empty message case
-      return;
-    }
+    if (message.trim() === "") return;
 
-    // Update chat history with the new message
     const newMessage = { text: message, sender: "user" };
     setChatHistory([...chatHistory, newMessage]);
-    scrollToBottom();
     setMessage("");
+
     document.getElementById("loading").classList.remove("hidden");
+
     try {
       const response = await fetch("http://localhost:5000/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Session-ID": sessionID,
-          // Auth Headers
-        },
-        body: JSON.stringify({ user_input: message, session_id: sessionID }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: message, user_id: userId }),
       });
 
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
-        document.getElementById("loading").classList.add("hidden");
       }
 
       const responseData = await response.json();
-      console.log(responseData); // Add this line to log the response data
-
-      // Update chat history with the response
-      setChatHistory([
-        ...chatHistory,
+      setChatHistory((prev) => [
+        ...prev,
         newMessage,
         { text: responseData.reply, sender: "bot" },
       ]);
-      document.getElementById("loading").classList.add("hidden");
-      scrollToBottom();
     } catch (error) {
       console.error("Failed to send message:", error);
-      // Optionally handle the error in UI
+    } finally {
       document.getElementById("loading").classList.add("hidden");
     }
   };
+
+  function scrollToBottom() {
+    const chatHistoryEl = document.getElementById("chatHistory");
+    chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+  }
 
   function clearChat() {
     const parent = document.getElementById("chatHistory");
@@ -60,122 +59,89 @@ function ChatBot() {
     });
   }
 
-  function clearInput() {
-    let input = document.getElementById("input-box");
-    input.value = "";
-  }
-
-  let history = document.getElementById("chatHistory");
-  function scrollToBottom(element) {
-    requestAnimationFrame(() => {
-      chatHistory.scrollTop = chatHistory.scrollHeight;
-    });
-  }
-
-  function saveChat() {
-    const userInputs = Array.from(
-      document.querySelectorAll(".message.user")
-    ).map((input) => input.textContent);
-    const botInputs = Array.from(document.querySelectorAll(".message.bot")).map(
-      (input) => input.textContent
-    );
-
-    fetch("http://localhost:5000/save_chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        user_inputs: userInputs,
-        bot_inputs: botInputs,
-      }),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((data) => {
-        console.log("Chat saved successfully:", data);
-      })
-      .catch((error) => {
-        console.error("Failed to save chat:", error);
-      });
-  }
-
   return (
-    <div className="w-full flex justify-center items-center bg-hsu bg-center bg-no-repeat h-screen">
-      <div className="chat-section w-3/4 relative  flex flex-col h-96 bg-purple rounded-xl shadow-2xl p-6 ">
-        <div className="w-full flex justify-between mb-6">
-          <div className="w-1/4 bg-white rounded">
-            <a href="https://www.hsutx.edu/">
-              <img src={logo} alt="" />
-            </a>
+    <div
+      className="flex justify-center items-start bg-purple-600 bg-opacity-50 pt-8 min-h-screen p-4"
+      style={{ "--bg-purple": "var(--custom-purple)" }}
+    >
+      <div className="w-full max-w-3xl flex flex-col h-[70vh] bg-white rounded-xl shadow-2xl">
+        <div
+          className="flex justify-between items-center p-4 text-white rounded-t-xl"
+          style={{ backgroundColor: "var(--bg-purple)" }}
+        >
+          <div className="flex items-center">
+            <img src={logoMain} alt="Logo" className="w-15 h-12 mr-3" />
+            <h1 className="text-lg font-bold">ChatBot</h1>
           </div>
-          <div className="self-end">
+          <div>
             <button
               onClick={clearChat}
-              className="bg-[#401486] text-white p-3 rounded-xl shadow-md focus:outline-none transition duration-300 ease-in-out transform hover:text-gold transform hover:scale-105"
+              className="mr-2 bg-red-500 hover:bg-red-700 transition duration-300 ease-in-out text-white font-bold py-2 px-4 rounded-full shadow-lg hover:shadow-xl"
             >
-              Clear Chat
+              <FontAwesomeIcon icon={faTrashAlt} /> Clear
+            </button>
+            <button
+              onClick={() => {
+                /* Add your saveChat functionality here */
+              }}
+              className="bg-green-500 hover:bg-green-700 transition duration-300 ease-in-out text-white font-bold py-2 px-4 rounded-full shadow-lg hover:shadow-xl"
+            >
+              <FontAwesomeIcon icon={faSave} /> Save
             </button>
           </div>
         </div>
         <div
-          className="flex-grow overflow-auto mb-4 p-4 bg-white rounded-xl shadow-inner"
           id="chatHistory"
+          className="flex-grow overflow-auto p-4 bg-gray-100"
         >
           {chatHistory.map((chat, index) => (
             <div
               key={index}
-              className={`message ${
-                chat.sender === "user" ? "rounded-r-lg" : "rounded-l-lg ml-auto"
-              } rounded-b-lg  bg-gold text-purple w-fit flex`}
+              className={`m-2 p-3 rounded-lg ${
+                chat.sender === "user"
+                  ? "bg-purple-200 text-gray-900"
+                  : "bg-purple-dark text-white"
+              }`} // Here we set user messages to dark text on light purple
+              style={{
+                backgroundColor:
+                  chat.sender === "user" ? "" : "var(--bg-purple)",
+              }}
             >
-              {chat.sender}: <br />
               {chat.text}
-              <br />
             </div>
           ))}
-          <div id="loading" className="text-right rtl:text-right hidden">
-            <div role="status">HossBot is typing...</div>
+          <div id="loading" className="hidden">
+            <div className="typing-indicator">
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
           </div>
         </div>
-        <div className="flex border-t border-gray-200 pt-4">
+        <div className="p-4 bg-gray-200 rounded-b-xl">
           <textarea
             id="input-box"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
+              if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
-                clearInput();
               }
             }}
-            className="flex-grow p-3 border border-gray-300 rounded-l-xl focus:outline-none  focus:border-transparent"
-            placeholder="Type your message..."
-            style={{ resize: "none" }}
-          />
+            className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:ring focus:ring-purple-200 resize-none transition duration-300 ease-in-out text-gray-900" // Dark text for input
+            placeholder="Type your message here..."
+          ></textarea>
           <button
             onClick={sendMessage}
-            className="bg-[#401486] text-white p-3 rounded-r-xl shadow-md hover:bg-purple-700 transition duration-300 ease-in-out transform hover:text-gold hover:scale-105"
+            className="mt-2 w-full hover:bg-purple-700 transition duration-300 ease-in-out text-white font-bold py-2 px-4 rounded-lg shadow hover:shadow-md"
+            style={{ backgroundColor: "var(--bg-purple)" }}
           >
             Send
-          </button>
-        </div>
-        <div className="flex justify-evenly my-2.5">
-          <button
-            onClick={saveChat}
-            className="bg-[#401486] text-white p-3 rounded-xl shadow-md focus:outline-none transition duration-300 ease-in-out transform hover:text-gold transform hover:scale-105"
-          >
-            Save Chat
           </button>
         </div>
       </div>
     </div>
   );
 }
-
 export default ChatBot;
